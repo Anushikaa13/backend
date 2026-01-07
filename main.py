@@ -10,6 +10,7 @@ from auth import (
     create_access_token, get_current_user
 )
 
+#-----------------------------Day 7 + Day 8 tasks---------------------------------------#
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Day 7 Product Management API")
@@ -60,14 +61,24 @@ def create_product(
     db.refresh(db_product)
     return db_product
 
-# ==========================
+# =========================================================
 # READ PRODUCTS (FILTER + SORT)
-# ==========================
+# Day 8 - Added pagination for performance and scalability
+# =========================================================
 @app.get("/products", response_model=List[schemas.ProductResponse])
 def get_products(
+    # ==========================FILTER PARAMETERS=======================
     min_price: Optional[float] = Query(None),
     max_price: Optional[float] = Query(None),
-    sort_by: Optional[str] = Query("price"),
+
+    # ==========================SORT PARAMETERS=========================
+    sort_by: Optional[str] = Query("price", regex="^(price|quantity|name)$"),
+    sort_order: Optional[str] = Query("asc", regex="^(asc|desc)$"),
+
+    # ==========================PAGINATION==============================
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+
     db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
@@ -77,11 +88,18 @@ def get_products(
         query = query.filter(models.Product.price >= min_price)
     if max_price is not None:
         query = query.filter(models.Product.price <= max_price)
+  
+    sort_column = getattr(models.Product, sort_by)
 
-    if sort_by in ["price", "quantity", "name"]:
-        query = query.order_by(getattr(models.Product, sort_by))
+    if sort_order == "desc":
+        sort_column = sort_column.desc()
+    
+    query = query.order_by(sort_column)
 
-    return query.all()
+    # Pagination for heavy load
+    products = query.offset(skip).limit(limit).all()
+
+    return products
 
 # ==========================
 # UPDATE PRODUCT
