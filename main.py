@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import Optional, List
+import logging
 
 from database import engine
 import models, schemas
@@ -10,6 +11,10 @@ from auth import (
     get_db, hash_password, authenticate_user,
     create_access_token, get_current_user
 )
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 #-----------------------------Day 7 + Day 8 tasks---------------------------------------#
 models.Base.metadata.create_all(bind=engine)
@@ -27,6 +32,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health_check():
+    logger.info("Health check endpoint called")
     return {"message": "Welcome to the Product Management API"}
 
 # ==========================
@@ -34,7 +40,9 @@ def health_check():
 # ==========================
 @app.post("/signup")
 def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    logger.info(f"Signup attempt for username: {user.username}")
     if db.query(models.User).filter(models.User.username == user.username).first():
+        logger.warning(f"Signup failed: Username {user.username} already exists")
         raise HTTPException(400, "Username already exists")
 
     new_user = models.User(
@@ -43,6 +51,7 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
     )
     db.add(new_user)
     db.commit()
+    logger.info(f"User {user.username} created successfully")
     return {"message": "User created successfully"}
 
 # ==========================
@@ -53,11 +62,14 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
+    logger.info(f"Login attempt for username: {form_data.username}")
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
+        logger.warning(f"Login failed for username: {form_data.username}")
         raise HTTPException(401, "Invalid credentials")
 
     token = create_access_token({"sub": user.username})
+    logger.info(f"User {form_data.username} logged in successfully")
     return {"access_token": token, "token_type": "bearer"}
 
 # ==========================
@@ -69,10 +81,12 @@ def create_product(
     db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
+    logger.info(f"Creating product: {product.name} by user: {user}")
     db_product = models.Product(**product.dict())
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
+    logger.info(f"Product created successfully with ID: {db_product.id}")
     return db_product
 
 # =========================================================
@@ -144,12 +158,15 @@ def delete_product(
     db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
+    logger.info(f"Deleting product ID: {product_id} by user: {user}")
     product = db.query(models.Product).filter(models.Product.id == product_id).first()
     if not product:
+        logger.warning(f"Delete failed: Product ID {product_id} not found")
         raise HTTPException(404, "Product not found")
 
     db.delete(product)
     db.commit()
+    logger.info(f"Product ID {product_id} deleted successfully")
     return {"message": "Product deleted"}
 
 #CICD TEST

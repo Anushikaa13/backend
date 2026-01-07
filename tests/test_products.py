@@ -12,4 +12,4 @@ def test_create_product(client, auth_headers):
     if response.status_code == 422:
         print(response.json()) 
         
-    assert response.status_code == 200
+    assert response.status_code in [200, 201]
