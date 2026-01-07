@@ -15,6 +15,10 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Day 7 Product Management API")
 
+@app.get("/health")
+def health_check():
+    return {"message": "Welcome to the Product Management API"}
+
 # ==========================
 # USER SIGNUP
 # ==========================
@@ -72,8 +76,8 @@ def get_products(
     max_price: Optional[float] = Query(None),
 
     # ==========================SORT PARAMETERS=========================
-    sort_by: Optional[str] = Query("price", regex="^(price|quantity|name)$"),
-    sort_order: Optional[str] = Query("asc", regex="^(asc|desc)$"),
+    sort_by: Optional[str] = Query("price", pattern="^(price|quantity|name)$"),
+    sort_order: Optional[str] = Query("asc", pattern="^(asc|desc)$"),
 
     # ==========================PAGINATION==============================
     skip: int = Query(0, ge=0),
