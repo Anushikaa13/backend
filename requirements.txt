@@ -16,6 +16,10 @@ passlib[argon2]==1.7.4
 argon2-cffi==23.1.0
 bcrypt==4.1.2
 
+# Rate Limiting & Security
+slowapi==0.1.9
+python-dotenv==1.0.0
+
 # Required by FastAPI
 pydantic==2.12.5
 starlette==0.50.0
